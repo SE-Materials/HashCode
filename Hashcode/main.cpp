@@ -34,31 +34,7 @@ struct BookPtrHasher
     }
 };
 
-unordered_map<BookPtr, int, BookPtrHasher> booksInWorkshop;
-long long int score = 0;
 
-long long int AddBookToWorkShop(BookPtr book)
-{
-    booksInWorkshop[book]++;
-    if (booksInWorkshop[book] == 1)
-        score += book->score;
-    
-    return score;
-}
-
-long long int RemoveBookFromWorkShop(BookPtr book)
-{
-    if (booksInWorkshop[book] == 0)
-    {
-        booksInWorkshop.erase(booksInWorkshop.find(book));
-        score = score - book->score;
-    }
-    else
-    {
-        booksInWorkshop[book]--;
-    }
-    return score;
-}
 
 struct comp
 {
@@ -68,21 +44,29 @@ struct comp
     }
 };
 
+struct Library;
+typedef shared_ptr<Library> LibraryPtr;
+
+//unordered_map<BookPtr, int, BookPtrHasher> booksInWorkshop;
+unordered_map<BookPtr, LibraryPtr, BookPtrHasher> booksInWorkshop;
+long long int score = 0;
 
 struct Library
 {
+    int id;
     int nBooks;
     int daysToSignup;
     int nBooksCanShipPerDay;
     priority_queue<BookPtr, vector<BookPtr>, comp> books;
     
-    Library(int b, int d, int days) : nBooks{b}, daysToSignup{d}, nBooksCanShipPerDay{days}
+    Library() {}
+    Library(int id, int b, int d, int days) : id{id}, nBooks{b}, daysToSignup{d}, nBooksCanShipPerDay{days}
     {
     }
     
+    unordered_set<BookPtr> uniqueBooks;
     void AddBooks(BookPtr book)
     {
-        static unordered_set<BookPtr> uniqueBooks;
         auto it = uniqueBooks.find(book);
         
         if (it == uniqueBooks.end())
@@ -93,18 +77,22 @@ struct Library
         
     }
     
+    
     unordered_set<BookPtr> booksFilteredOut;
     
     // can be 0,1, ...
     vector<BookPtr> GetBooks()
     {
+        int size = books.size();
+        
         int temp = nBooksCanShipPerDay;
         vector<BookPtr> booksToReturn;
         while (temp && !books.empty())
         {
-            auto it = booksFilteredOut.find(books.top());
-            if (it != booksFilteredOut.end())
+            auto it = booksInWorkshop.find(books.top());
+            if (it != booksInWorkshop.end())
             {
+                booksFilteredOut.insert(books.top());
                 books.pop();
                 continue;
             }
@@ -119,30 +107,131 @@ struct Library
     
     bool HaveBooks()
     {
-        return !books.empty();
+        auto currBooks = this->books;
+        return !this->books.empty();
     }
 };
 
-void solve(int D, const vector<Library>& libraries)
+struct LibraryPtrHasher
+{
+    std::size_t operator()(const LibraryPtr& lib) const
+    {
+        return lib->id;
+    }
+};
+
+long long int AddBookToWorkShop(BookPtr book, LibraryPtr& l)
+{
+    booksInWorkshop[book] = l;
+    score += book->score;
+    
+    //    booksInWorkshop.insert(make_pair(book, l));
+    
+    //    booksInWorkshop[book]++;
+    //    if (booksInWorkshop[book] == 1)
+    //        score += book->score;
+    
+    return score;
+}
+
+long long int RemoveBookFromWorkShop(BookPtr book)
+{
+    //    if (booksInWorkshop[book] == 0)
+    //    {
+    //        booksInWorkshop.erase(booksInWorkshop.find(book));
+    //        score = score - book->score;
+    //    }
+    //    else
+    //    {
+    //        booksInWorkshop[book]--;
+    //    }
+    
+    booksInWorkshop.erase(booksInWorkshop.find(book));
+    score -= book->score;
+    return score;
+}
+
+
+
+
+void solve(int D, vector<LibraryPtr>& libraries)
 {
     
-    int L = libraries.size();
+    vector<LibraryPtr> activeLibraries;
     
-    // your code here
+    // ----- your code here --------
     
-    // In a particular day : Many libraries are there - choose set of books such it maximises for that day ?
-    // 
+    // Decide how to choose libraries (order basically)!
+    // In a particular day : Many active libraries are there - choose set of books such it maximises for that day ?
+    
+    // Method 1:
+    // Let's choose libraries sequentially now and books also sequentially
+    
+    int iday = 0;
+    while (iday < D)
+    {
+        // Now this library can send books
+        if (!libraries.empty() && libraries.back()->daysToSignup-- == 0)
+        {
+            activeLibraries.push_back(libraries.back());
+            //            activeLibraries.back()->books = libraries.back().books;
+            
+            libraries.pop_back();
+            
+            if (!libraries.empty())
+            {
+                libraries.back()->daysToSignup--;
+            }
+        }
+        
+        
+        // For all active libraries
+        for (auto& lib : activeLibraries) {
+            //if (lib.HaveBooks())
+            {
+                auto books = lib->GetBooks();
+                if (!books.empty())
+                {
+                    for (auto& book : books) {
+                        AddBookToWorkShop(book, lib);
+                    }
+                }
+            }
+        }
+        
+        iday++;
+    }
+
+    unordered_map<LibraryPtr, vector<BookPtr>> libraryToBooksUsed;
+    for (auto& booksToLibrary : booksInWorkshop)
+    {
+        libraryToBooksUsed[booksToLibrary.second].push_back(booksToLibrary.first);
+    }
+    
+    
+    // Print
+    cout << libraryToBooksUsed.size() << endl;
+    for (auto& libtobooks : libraryToBooksUsed) {
+        auto lib = libtobooks.first;
+        auto books = libtobooks.second;
+        
+        cout << lib->id << " " << books.size() << endl;
+        for (auto book : books) {
+            cout << book->id << " ";
+        }
+        cout << endl;
+    }
     
 }
 
 int main(int argc, const char * argv[]) {
     
-    freopen("/Users/aniket/Documents/programming/SEMaterials/Hashcode/Hashcode/a_output.txt", "w", stdout);
-    freopen("/Users/aniket/Documents/programming/SEMaterials/Hashcode/Hashcode/a.txt", "r", stdin);
+    freopen("/Users/aniket/Documents/programming/SEMaterials/Hashcode/Hashcode/d_output.txt", "w", stdout);
+    freopen("/Users/aniket/Documents/programming/SEMaterials/Hashcode/Hashcode/d.txt", "r", stdin);
     
     int B{}, L{}, D{};
     unordered_map<int, BookPtr> idToBooks;
-    vector<Library> libraries;
+    vector<LibraryPtr> libraries;
     
     cin >> B >> L >> D;
     
@@ -164,7 +253,7 @@ int main(int argc, const char * argv[]) {
         cin >> nbooks >> daysTosignUp >> nBooksCanShip;
         
         // ith library
-        libraries.push_back(Library(nbooks, daysTosignUp, nBooksCanShip));
+        libraries.push_back(make_shared<Library>(iLibrary, nbooks, daysTosignUp, nBooksCanShip));
         
         string line;
         cin >> ws;
@@ -173,7 +262,7 @@ int main(int argc, const char * argv[]) {
         stringstream ss(line);
         int bookId;
         while (ss >> bookId)
-            libraries[iLibrary].AddBooks(idToBooks[bookId]);
+            libraries[iLibrary]->AddBooks(idToBooks[bookId]);
     }
     
     solve(D, libraries);
