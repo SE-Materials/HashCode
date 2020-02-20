@@ -41,6 +41,9 @@ void solve(int D, const vector<int>& bookScores, const vector<Library*>& librari
 
 int main(int argc, const char * argv[]) {
     
+    freopen("/Users/aniket/Documents/programming/SEMaterials/Hashcode/Hashcode/output.txt", "w", stdout);
+    freopen("/Users/aniket/Documents/programming/SEMaterials/Hashcode/Hashcode/a_example.txt", "r", stdin);
+    
     int B{}, L{}, D{};
     vector<int> bookScores;
     vector<Library*> libraries;
